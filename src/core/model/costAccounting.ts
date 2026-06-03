@@ -104,9 +104,27 @@ export function summarizeModelUsage(notes: ModelNote[]): ModelUsageSummary {
 
 function readPrice(provider: string, direction: "INPUT" | "OUTPUT"): number | undefined {
   const value = process.env[`${provider.toUpperCase()}_${direction}_PRICE_PER_MTOK`];
-  if (!value) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+  if (value) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+  }
+  return fallbackProviderPrice(provider, direction);
+}
+
+// Fallback reference prices for known providers (USD per million tokens).
+// Users can override via <PROVIDER>_INPUT_PRICE_PER_MTOK / <PROVIDER>_OUTPUT_PRICE_PER_MTOK env vars.
+const providerPriceFallbacks: Record<string, { input: number; output: number }> = {
+  openrouter: { input: 2.5, output: 10 },
+  deepseek: { input: 0.14, output: 0.28 },
+  mimo: { input: 0.4, output: 1.6 },
+  kimi: { input: 0.5, output: 2 },
+  openai_compatible: { input: 0.15, output: 0.6 },
+};
+
+function fallbackProviderPrice(provider: string, direction: "INPUT" | "OUTPUT"): number | undefined {
+  const prices = providerPriceFallbacks[provider];
+  if (!prices) return undefined;
+  return direction === "INPUT" ? prices.input : prices.output;
 }
 
 function roundUsd(value: number): number {
