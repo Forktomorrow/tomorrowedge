@@ -74,7 +74,7 @@ export function App({ graph, safeMode = true, cwd = process.cwd() }: { graph: Ag
       setPalette(palette === "models" ? null : "models");
       return;
     }
-    if (busy) return;
+    if (busy) { setMessage("Workflow in progress — wait for completion before new actions."); return; }
     if (key.ctrl && input.toLowerCase() === "a") {
       runTuiAction("patch", cwd, viewGraph, setBusy, setMessage, setViewGraph);
       return;

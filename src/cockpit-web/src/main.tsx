@@ -185,15 +185,19 @@ function CockpitWebRoot() {
       setStatusMessage("A workflow is already in progress. Wait for it to finish or refresh the page.");
       return;
     }
+    // Auto-detect: use fixture demo when no real API key is configured, live mode otherwise
+    const hasLiveProvider = setupStatus && !setupStatus.needsSetup;
+    const isDemo = !hasLiveProvider;
+
     setBusy(true);
-    setStatusMessage("Starting workflow with live models...");
+    setStatusMessage(isDemo ? "Running fixture demo (no API key needed)..." : "Starting workflow with live models...");
     try {
       const payload = await startCockpitRun({
         goal: goal.trim() || "fix failing test",
         accessMode,
-        fixtureMode: false,
-        livePatch: true,
-        liveAdvisory: true,
+        fixtureMode: isDemo,
+        livePatch: !isDemo,
+        liveAdvisory: !isDemo,
         to: "core"
       }, apiOptions);
       updateSelectedSession(payload.sessionId);
@@ -203,7 +207,7 @@ function CockpitWebRoot() {
       setBusy(false);
       setStatusMessage(`Run failed: ${errorMessage(error)}`);
     }
-  }, [accessMode, apiOptions, busy, connectLive, goal, updateSelectedSession]);
+  }, [accessMode, apiOptions, busy, connectLive, goal, updateSelectedSession, setupStatus]);
 
   const configureSetup = useCallback(async (request: CockpitSetupRequest) => {
     if (setupBusy) return;

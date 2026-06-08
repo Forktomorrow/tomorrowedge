@@ -24,6 +24,7 @@ import { buildAccessPolicy } from "../core/permissions/accessPolicy.js";
 import type { AgentGraphState } from "../core/agentGraph/state.js";
 import type { TomorrowEdgeEvent } from "../core/events/eventTypes.js";
 import { configureCockpitProvider, getCockpitSetupStatus, testCockpitProvider } from "./setup.js";
+import { prepareRunWorkspace } from "../cli/commands/run.js";
 
 export type LocalCockpitServerOptions = {
   port?: number;
@@ -198,7 +199,8 @@ async function routeRequest(cwd: string, request: IncomingMessage, response: Ser
           cockpitEventBus.setSnapshot({ sessionId, state: liveState, done: false });
         }
       };
-      void runOfflineGraph(cwd, goal, config, options)
+      const workspace = await prepareRunWorkspace(cwd, { fixtureMode: options.fixtureMode });
+      void runOfflineGraph(workspace.executionCwd, goal, config, options)
         .then(async (state) => {
           await saveSession(cwd, state);
           cockpitEventBus.setSnapshot({ sessionId: state.sessionId, state, done: true });
