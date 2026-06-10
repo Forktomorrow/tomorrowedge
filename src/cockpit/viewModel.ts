@@ -646,8 +646,27 @@ function buildTelemetry(state: AgentGraphState | undefined, routes: CockpitRoute
     shellWaiting: approval?.kind === "shell",
     latestRiskLevel: approval?.riskLevel ?? selectedCandidate(state)?.estimatedRisk,
     decisionConfidence: state?.judge?.confidence,
-    fallbackCount: (state?.events ?? []).filter((event) => event.type === "provider_fallback" || event.type === "fallback_to_native").length
+    fallbackCount: (state?.events ?? []).filter((event) => event.type === "provider_fallback" || event.type === "fallback_to_native").length,
+    roleCosts: buildRoleCosts(state?.modelNotes, usage.estimatedCostUsd ?? 0),
   };
+}
+
+/** Build per-role cost breakdown from model notes. */
+function buildRoleCosts(notes: AgentGraphState["modelNotes"] | undefined, totalCost: number): CockpitTelemetry["roleCosts"] {
+  if (!notes || notes.length === 0) return undefined;
+  const byRole = new Map<string, { model: string; cost: number }>();
+  for (const note of notes) {
+    const cost = note.estimatedCostUsd ?? 0;
+    if (cost <= 0) continue;
+    const existing = byRole.get(note.role);
+    if (existing) existing.cost += cost;
+    else byRole.set(note.role, { model: note.model, cost });
+  }
+  const result = [...byRole.entries()]
+    .filter(([_, v]) => v.cost > 0)
+    .map(([role, v]) => ({ role, model: v.model, costUsd: v.cost, percent: totalCost > 0 ? Math.round((v.cost / totalCost) * 100) : 0 }))
+    .sort((a, b) => b.costUsd - a.costUsd);
+  return result.length > 0 ? result : undefined;
 }
 
 function deriveUsageFromEvents(state?: AgentGraphState): AgentGraphState["usageSummary"] | undefined {
